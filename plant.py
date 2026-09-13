@@ -1,6 +1,9 @@
+import random 
+
+
 class Plant():
 
-    def __init__(self, name, capacity_mw, country):
+    def __init__(self, name, capacity_mw, country, availability=1.0):
 
         # Un attribut reste dans Plant (le parent) si toutes les technologies en ont besoin, 
         # sous la même forme. Un attribut irait plutôt dans une classe fille si :
@@ -8,20 +11,48 @@ class Plant():
         self.name = name
         self.capacity_mw= capacity_mw
         self.country = country
+        self.availability = availability
+
+
+    # define weather Plant is available to be run
+    def is_available(self):
+        random_number = random.random()
+
+        if random_number < self.availability:
+            return True
+        else:
+            return False
+
+    def available_capacity_mw(self, **kwargs):
+
+        # **kwargs accepts any named argument without crashing (e.g., wind_speed=30, irradiance=500)
+        # This is useful because Market will call this method the same way for all power plants,
+        # even though Gas doesn't need any of these weather arguments
+
+        if self.is_available():
+            return self.capacity_mw
+        else:
+            return 0
 
 
 
-        # Un attribut irait plutôt dans une classe fille si :
-        # seule cette techno en a besoin (les autres n'en ont pas l'usage du tout)
+
+
+# Un attribut irait plutôt dans une classe fille si :
+# seule cette techno en a besoin (les autres n'en ont pas l'usage du tout)
+
+
+### Class Gas
 
 
 class Gas(Plant):
 
-    def __init__(self, name, capacity_mw, country, fuel_price, efficiency, emission_factor):
-        super().__init__(name, capacity_mw, country)
+    def __init__(self, name, capacity_mw, country, fuel_price, efficiency, emission_factor, availability = 0.93):
+        super().__init__(name, capacity_mw, country, availability)
         self.fuel_price = fuel_price
         self.efficiency = efficiency
         self.emission_factor = emission_factor
+
 
     def marginal_cost(self, c02_price):
 
@@ -36,10 +67,13 @@ class Gas(Plant):
         return marginal_cost 
 
 
+### Class Nuclear
+
+
 class Nuclear(Plant):
 
-    def __init__(self, name, capacity_mw, country, fuel_price, efficiency, emission_factor):
-        super().__init__(name, capacity_mw, country)
+    def __init__(self, name, capacity_mw, country, fuel_price, efficiency, emission_factor, availability=0.8):
+        super().__init__(name, capacity_mw, country,availability)
         self.fuel_price = fuel_price
         self.efficiency = efficiency
         self.emission_factor = emission_factor
@@ -52,33 +86,118 @@ class Nuclear(Plant):
         return marginal_cost
 
 
+
+### Class Solar
+
+
 class Wind(Plant):
-    def __init__(self, name, capacity_mw, country, cut_in=12, rated=55, cut_out=90):
-        super().__init__(name,capacity_mw, country)
+    def __init__(self, name, capacity_mw, country, availability = 0.99, cut_in=12, rated=55, cut_out=90):
+        super().__init__(name,capacity_mw, country, availability)
         self.cut_in = cut_in
         self.rated = rated
         self.cut_out = cut_out
 
 
+    # provide how much capacity is currently produced
 
     def actual_capacity_mw(self, wind_speed):
 
-        current_cappacity_mw = 0
+        # Check if wind farm is available to be run
+        current_availability = self.is_available() 
 
-        if wind_speed < self.cut_in:
-            return 0
-        # formule cubique, qui donne une valeur progressive — proche de 0 juste après cut_in, 
-        # et qui monte jusqu'à approcher capacity_mw quand wind_speed s'approche de rated. 
-        # Ce n'est pas le maximum constant, c'est une valeur qui change selon wind_speed, 
-        # dans cette plage précise.
-        elif self.cut_in < wind_speed < self.rated:
-            current_cappacity_mw = self.capacity_mw * (wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)
-        elif self.rated < wind_speed < self.cut_out:
-            return self.capacity_mw
-        elif wind_speed > self.cut_out:
+        # initialize current MWH capacity
+
+        current_capacity_mw =  0
+
+        if not current_availability:
             return 0
 
-        return current_cappacity_mw
+        else:
+            if wind_speed < self.cut_in:
+                return 0
+                # formule cubique, qui donne une valeur progressive — proche de 0 juste après cut_in, 
+                # et qui monte jusqu'à approcher capacity_mw quand wind_speed s'approche de rated. 
+                # Ce n'est pas le maximum constant, c'est une valeur qui change selon wind_speed, 
+                # dans cette plage précise.
+            elif self.cut_in < wind_speed < self.rated:
+                current_capacity_mw = self.capacity_mw * (wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)
+                return current_capacity_mw
+        
+            elif self.rated < wind_speed < self.cut_out:
+                    return self.capacity_mw
+            
+            elif wind_speed > self.cut_out:
+                    return 0
+
+
+    
+    def available_capacity_mw(self, **kwargs):
+
+
+        # 1)  **“kwargs” in a function signature means “accepts any number of named arguments, 
+        # no matter which ones; I'll collect them all in a dictionary called ‘kwargs’.”**
+
+        
+        # 2) To the right of the =: kwargs[“wind_speed”] — this means “look up, in the kwargs dictionary, 
+        # the value associated with the key (the text) ‘wind_speed’”.
+
+        # 2) To the left of the =: wind_speed (without quotes) — this is the name of a new local variable 
+        # you're creating, in which you store the value on the right.
+        # wind_speed = kwargs["wind_speed"]
+
+        wind_speed = kwargs["wind_speed"]
+
+        # We use actual_capacity_mw() here instead of capacity_mw (the fixed installed capacity),
+        # because a wind farm can't reliably produce its full nameplate capacity on demand like
+        # Gas/Nuclear can — output depends on real-time wind, so Market needs the actual
+        # weather-limited value to compute a realistic clearing price.
+        
+        return self.actual_capacity_mw(wind_speed)
+        
+
 
     def marginal_cost(self, c02_price):
         return 0
+
+
+        
+### Class Solar
+
+
+class Solar(Plant):
+    def __init__(self,name, capacity_mw, country, availability = 0.99):
+        super().__init__(name, capacity_mw, country, availability)
+
+
+
+
+    def actual_capacity_mw(self, irradiance, irradiance_max=1000):
+
+        # Check if solar park is available to be "run"
+        current_availability = self.is_available() 
+
+        # initialize current MWH capacity
+
+
+        if not current_availability:
+            return 0
+
+        else:
+
+
+        # irradiance: amount of sunlight energy hitting a surface, expressed as a rate (per second)
+        # -> that rate is what we call power, measured in W/m^2 (0 at night, up to ~1000 in full sun)
+        # capacity_factor: fraction (0 to 1) of installed capacity actually usable right now
+        
+            capacity_factor = min(irradiance / irradiance_max, 1)
+            return self.capacity_mw * capacity_factor
+
+    def available_capacity_mw(self, **kwargs):
+
+        irradiance = kwargs["irradiance"]
+
+        return self.actual_capacity_mw(irradiance, irradiance_max=1000)
+
+    def marginal_cost(self, c02_price):
+        return 0
+

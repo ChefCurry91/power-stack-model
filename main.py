@@ -1,4 +1,4 @@
-from plant import Plant,Gas, Nuclear, Wind
+from plant import Plant,Gas, Nuclear, Wind, Solar
 from market import Market
 
 # initialize instance Gaz
@@ -9,7 +9,7 @@ gaz = Gas(
     country="Germany",
     fuel_price=30, 
     efficiency=0.5, 
-    emission_factor=0.2
+    emission_factor=0.2,
     )
 
 # initialize instance Nuclear
@@ -28,10 +28,17 @@ nuclear = Nuclear(
 
 wind = Wind(name = 'Wind_farm_1', capacity_mw=22000, country="Germany")
 
+# initialize instance Solar
+
+solar = Solar(name='Park_1',capacity_mw=20000, country="Germany")
+
+print('hello')
+
 
 # initialize instance Wind
 
-list_plants = [gaz, nuclear,wind]
+list_plants = [gaz, nuclear, solar, wind]
 market = Market(list_plants)
 
-print(market.clear(demand_capacity=30000, c02_price=80))
+print(market.clear(demand_capacity=30000, c02_price=80, wind_speed =30, irradiance=500))
+
