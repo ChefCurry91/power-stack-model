@@ -10,7 +10,7 @@ class Market():
         self.plants = plants
 
    # def merit_order_stack(self, c02_price):
-    def merit_order_stack(self, c02_price, wind_speed, irradiance):
+    def merit_order_stack(self, c02_price, wind_speed, temperature, irradiance):
 
         #key=lambda p: p.marginal_cost() se lit en trois morceaux :
 
@@ -26,13 +26,13 @@ class Market():
         cumuls = []
 
         for element in sorted_plants:
-            total += element.available_capacity_mw(wind_speed=wind_speed, irradiance=irradiance)
+            total += element.available_capacity_mw(wind_speed=wind_speed, temperature=temperature, irradiance=irradiance)
             cumuls.append(total)
 
         return sorted_plants, cumuls
 
-    def clear(self, demand_capacity,c02_price, wind_speed, irradiance):
-        sorted_plants, cumuls = self.merit_order_stack(c02_price, wind_speed, irradiance)
+    def clear(self, demand_capacity,c02_price, wind_speed, temperature, irradiance):
+        sorted_plants, cumuls = self.merit_order_stack(c02_price, wind_speed, temperature, irradiance)
         
 
         i = 0

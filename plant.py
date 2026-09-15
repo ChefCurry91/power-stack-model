@@ -100,10 +100,35 @@ class Wind(Plant):
 
     # provide how much capacity is currently produced
 
-    def actual_capacity_mw(self, wind_speed):
+    def actual_capacity_mw(self, wind_speed, temperature):
 
         # Check if wind farm is available to be run
         current_availability = self.is_available() 
+
+
+
+        # ρ = P / (R × T)  — the ideal gas law, rearranged to solve for density (ρ)
+        # 101325 = standard atmospheric pressure at sea level, in Pascals (P)
+        #  287.05 = specific gas constant for dry air, in J/(kg·K) (R) — a fixed physical constant
+        #   T  = temperature in Kelvin (must convert from Celsius: + 273.15)
+
+
+        current_density = 101325 / (287.05 * (temperature + 273.15))
+
+        # ratio_density: how today's actual air density compares to the standard
+        # reference density (1.225 kg/m^3). Below 1.0 on a hot day (less dense air, less power), 
+        # above 1.0 on a cold day (denser air, more power).
+
+        ratio_density = current_density / 1.225
+
+        # Air density correction: wind turbine power output is directly proportional
+        # to air density (not just wind speed). Manufacturers rate turbines assuming
+        # a standard reference density of 1.225 kg/m^3 (sea level, 15°C). On a hot day,
+        # air is thinner (lower density) and the turbine produces less than the rated
+        # curve suggests, even at the same wind speed; on a cold day, denser air means
+        # slightly more output.
+
+
 
         # initialize current MWH capacity
 
@@ -120,11 +145,11 @@ class Wind(Plant):
                 # Ce n'est pas le maximum constant, c'est une valeur qui change selon wind_speed, 
                 # dans cette plage précise.
             elif self.cut_in < wind_speed < self.rated:
-                current_capacity_mw = self.capacity_mw * (wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)
-                return current_capacity_mw
+                current_capacity_mw = (self.capacity_mw * (wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)) * ratio_density
+                return current_capacity_mw 
         
             elif self.rated < wind_speed < self.cut_out:
-                    return self.capacity_mw
+                    return self.capacity_mw * ratio_density
             
             elif wind_speed > self.cut_out:
                     return 0
@@ -146,13 +171,14 @@ class Wind(Plant):
         # wind_speed = kwargs["wind_speed"]
 
         wind_speed = kwargs["wind_speed"]
+        temperature = kwargs["temperature"]
 
         # We use actual_capacity_mw() here instead of capacity_mw (the fixed installed capacity),
         # because a wind farm can't reliably produce its full nameplate capacity on demand like
         # Gas/Nuclear can — output depends on real-time wind, so Market needs the actual
         # weather-limited value to compute a realistic clearing price.
         
-        return self.actual_capacity_mw(wind_speed)
+        return self.actual_capacity_mw(wind_speed,temperature)
         
 
 

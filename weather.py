@@ -14,7 +14,7 @@ def fetch_weather(latitude, longitude):
     params = {
         "latitude": latitude,
         "longitude": longitude,
-        "hourly": "wind_speed_100m,shortwave_radiation"
+        "hourly": "wind_speed_100m,shortwave_radiation,temperature_2m",
     }
     responses = openmeteo.weather_api(url, params=params)
     response = responses[0]
@@ -22,12 +22,16 @@ def fetch_weather(latitude, longitude):
 
     hourly_wind_speed_100m = hourly.Variables(0).ValuesAsNumpy()
     hourly_irradiance = hourly.Variables(1).ValuesAsNumpy()
+    hourly_temperature_m2 = hourly.Variables(2).ValuesAsNumpy()
 
-    return hourly_wind_speed_100m, hourly_irradiance
+    return hourly_wind_speed_100m, hourly_irradiance,hourly_temperature_m2
 
 
-#wind_speed_list, irradiance_list = fetch_weather(52.52, 13.41)
+wind_speed_list, irradiance_list,temperature_2m_list = fetch_weather(52.52, 13.41)
 
 #print('hello')
 #print(wind_speed_list)
 #print(irradiance_list)
+#print('ciao')
+#print(temperature_2m_list)
+

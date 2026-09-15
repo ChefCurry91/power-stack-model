@@ -50,7 +50,7 @@ market = Market(list_plants)
 
 # Fetch full 168h (7-day) forecast for Berlin: wind speed at 100m and solar irradiance,
 # one value per hour, starting at midnight (00:00) of today.
-wind_speed_list, irradiance_list = fetch_weather(52.52, 13.41)
+wind_speed_list, irradiance_list, temperature_2m_list = fetch_weather(52.52, 13.41)
 
 
 # Get the current real-world hour (0-23), to know where "now" falls
@@ -66,13 +66,16 @@ end_of_24_hours = index_next_24_hours + 24
 # Slice out just the next 24 hours of wind speed and irradiance, starting from now,
 # instead of using the full 7-day series.
 list_wind_speed_next_24_hours = wind_speed_list[index_next_24_hours:end_of_24_hours]
-print(list_wind_speed_next_24_hours[0])
 list_irradiance_next_24_hours = irradiance_list[index_next_24_hours:end_of_24_hours]
+list_temperature_2m_next_24_hours = temperature_2m_list[index_next_24_hours:end_of_24_hours]
+#print('hello')
+#print(list_temperature_2m_next_24_hours)
 
 
 # For each of the next 24 hours, run the market clearing with that hour's real
 # wind speed and irradiance, to see how the price evolves as weather conditions change.
 for i, speed in enumerate(list_wind_speed_next_24_hours):
-    irradiance_hour = list_irradiance_next_24_hours[i]
-    price = market.clear(demand_capacity=30000, c02_price=80, wind_speed=speed, irradiance=irradiance_hour)
-    print(f"Hour {i}: vent={speed:.1f}, irradiance={irradiance_hour:.0f} → Price={price}")
+     irradiance_hour = list_irradiance_next_24_hours[i]
+     temperature_hour = list_temperature_2m_next_24_hours[i]
+     price = market.clear(demand_capacity=30000, c02_price=80, wind_speed=speed, temperature =temperature_hour, irradiance=irradiance_hour)
+     print(f"Hour {i}: vent={speed:.1f}, temperature={temperature_hour:.0f}, irradiance={irradiance_hour:.0f} → Price={price}")
