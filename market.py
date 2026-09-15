@@ -1,4 +1,8 @@
 from plant import Plant
+from weather import fetch_weather
+
+
+
 
 class Market():
 
@@ -22,7 +26,6 @@ class Market():
         cumuls = []
 
         for element in sorted_plants:
-            #total += element.capacity_mw
             total += element.available_capacity_mw(wind_speed=wind_speed, irradiance=irradiance)
             cumuls.append(total)
 
