@@ -1,9 +1,10 @@
 from plant import Plant,Gas, Nuclear, Wind, Solar
 from market import Market
 from datetime import datetime
-from weather import fetch_weather
 import pandas as pd
+from weather import fetch_weather
 from entsoe_data import fetch_load_forecast, fetch_installed_capacity_zone
+from fuel_prices import fetch_gas_price
 
 
 # Convert current time into a pandas Timestamp with timezone, required by fetch_load_forecast().
@@ -18,13 +19,16 @@ zone= "DE_LU"
 
 installed_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
 
+latest_gas_price = fetch_gas_price()
+
+
 # initialize instance Gaz
 
 gaz = Gas(
     name="CCGT_gaz", 
     capacity_mw=installed_capacity_DE_LU["Fossil Gas"].iloc[0], 
     country="Germany",
-    fuel_price=30, 
+    fuel_price=latest_gas_price, 
     efficiency=0.5, 
     emission_factor=0.2,
     )
@@ -51,9 +55,8 @@ solar = Solar(name='Park_1',capacity_mw=installed_capacity_DE_LU["Solar"].iloc[0
 
 
 
-# initialize instance Wind
 
-list_plants = [gaz, nuclear, solar, wind_on_shore]
+list_plants = [gaz, solar, wind_on_shore]
 market = Market(list_plants)
 
 
@@ -80,17 +83,12 @@ def build_forecast_dataset(start_time_forecasting, end_time_forecasting, zone_fo
 forecasted_situation = build_forecast_dataset(start,end,zone,52.52, 13.41)
 
 
-print('whoa')
+
 for i, row in forecasted_situation.iterrows():
     price = market.clear(demand_capacity=row['demand'], c02_price=80, wind_speed=row["wind_speed_100m"], temperature=row['temperature'], irradiance=row['irradiance'])
     print(f"{row['time']}: Price={price}")
 
-print('ciao')
 
-#ciao = fetch_installed_capacity_zone(zone,start,end)
-#print(ciao)
-#print(ciao["Biomass"])
-#print(ciao.columns.tolist())
 
 print(installed_capacity_DE_LU[[
     "Fossil Gas",
@@ -98,3 +96,9 @@ print(installed_capacity_DE_LU[[
     "Wind Offshore",
     "Solar"
 ]])
+
+
+
+
+
+print(type(latest_gas_price))
