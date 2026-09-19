@@ -2,7 +2,8 @@ from plant import Plant,Gas, Nuclear, Wind, Solar
 from market import Market
 from datetime import datetime
 from weather import fetch_weather
-
+import pandas as pd
+from entsoe_data import fetch_load_forecast
 
 
 # initialize instance Gaz
@@ -36,7 +37,6 @@ wind = Wind(name = 'Wind_farm_1', capacity_mw=22000, country="Germany")
 
 solar = Solar(name='Park_1',capacity_mw=20000, country="Germany")
 
-#print('hello')
 
 
 # initialize instance Wind
@@ -45,37 +45,39 @@ list_plants = [gaz, nuclear, solar, wind]
 market = Market(list_plants)
 
 
+def build_forecast_dataset(start_time_forecasting, end_time_forecasting, zone_forecasting, latitude, longitude):
+    # Fetch electricity demand forecast for the given zone and time window
+    list_demand_electricity_next_24_hours = fetch_load_forecast(zone_forecasting, start_time_forecasting, end_time_forecasting)
+
+    # Turn the timestamp index into a plain "time" column, so it can be merged with weather data
+    demand_df = list_demand_electricity_next_24_hours.reset_index()
+    # Rename columns to "time"/"demand" for clarity and to match weather_df's column name
+    demand_df.columns = ["time", "demand"]
+
+    # Fetch the full 168h weather forecast, then keep only the requested window
+    weather_df = fetch_weather(latitude, longitude)
+    weather_next_24h = weather_df[(weather_df["time"] >= start_time_forecasting) & (weather_df["time"] < end_time_forecasting)]
+
+    # Combine both sources on matching timestamps (drops hours missing from either side)
+    combined_df = pd.merge(weather_next_24h, demand_df, on="time", how="inner")
+
+    return combined_df
 
 
+# Convert current time into a pandas Timestamp with timezone, required by fetch_load_forecast().
+# Window is 22h (not 24h): ENTSO-E's day-ahead load forecast has a limited horizon and doesn't
+# always cover a full 24h from now — using 22h keeps us safely within the available data range,
+# avoiding gaps that would otherwise need to be handled after merging with weather data.
+start = pd.Timestamp(datetime.now(), tz="Europe/Berlin")
+end = start + pd.Timedelta(hours=22)
 
-# Fetch full 168h (7-day) forecast for Berlin: wind speed at 100m and solar irradiance,
-# one value per hour, starting at midnight (00:00) of today.
-wind_speed_list, irradiance_list, temperature_2m_list = fetch_weather(52.52, 13.41)
+zone= "DE_LU"
 
-
-# Get the current real-world hour (0-23), to know where "now" falls
-# within the 168h series returned by the API (which always starts at midnight).
-current_time = datetime.now()
-current_hour = current_time.hour
-
-# Define the slice boundaries: from the current hour, 24 hours ahead.
-index_next_24_hours = current_hour
-end_of_24_hours = index_next_24_hours + 24
+forecasted_situation = build_forecast_dataset(start,end,zone,52.52, 13.41)
 
 
-# Slice out just the next 24 hours of wind speed and irradiance, starting from now,
-# instead of using the full 7-day series.
-list_wind_speed_next_24_hours = wind_speed_list[index_next_24_hours:end_of_24_hours]
-list_irradiance_next_24_hours = irradiance_list[index_next_24_hours:end_of_24_hours]
-list_temperature_2m_next_24_hours = temperature_2m_list[index_next_24_hours:end_of_24_hours]
-#print('hello')
-#print(list_temperature_2m_next_24_hours)
+print('whoa')
+for i, row in forecasted_situation.iterrows():
+    price = market.clear(demand_capacity=row['demand'], c02_price=80, wind_speed=row["wind_speed_100m"], temperature=row['temperature'], irradiance=row['irradiance'])
+    print(f"{row['time']}: Price={price}")
 
-
-# For each of the next 24 hours, run the market clearing with that hour's real
-# wind speed and irradiance, to see how the price evolves as weather conditions change.
-for i, speed in enumerate(list_wind_speed_next_24_hours):
-     irradiance_hour = list_irradiance_next_24_hours[i]
-     temperature_hour = list_temperature_2m_next_24_hours[i]
-     price = market.clear(demand_capacity=30000, c02_price=80, wind_speed=speed, temperature =temperature_hour, irradiance=irradiance_hour)
-     print(f"Hour {i}: vent={speed:.1f}, temperature={temperature_hour:.0f}, irradiance={irradiance_hour:.0f} → Price={price}")

@@ -227,3 +227,4 @@ class Solar(Plant):
     def marginal_cost(self, c02_price):
         return 0
 
+
