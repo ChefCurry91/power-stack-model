@@ -17,3 +17,11 @@ def fetch_load_forecast(zone, start, end):
 
     return load_forecast_hourly
 
+
+def fetch_installed_capacity_zone(zone,start,end):
+
+    installed_capacity  = client.query_installed_generation_capacity(zone,start=start, end=end)
+    return installed_capacity
+
+
+

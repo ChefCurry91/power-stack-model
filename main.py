@@ -3,14 +3,26 @@ from market import Market
 from datetime import datetime
 from weather import fetch_weather
 import pandas as pd
-from entsoe_data import fetch_load_forecast
+from entsoe_data import fetch_load_forecast, fetch_installed_capacity_zone
 
+
+# Convert current time into a pandas Timestamp with timezone, required by fetch_load_forecast().
+# Window is 22h (not 24h): ENTSO-E's day-ahead load forecast has a limited horizon and doesn't
+# always cover a full 24h from now — using 22h keeps us safely within the available data range,
+# avoiding gaps that would otherwise need to be handled after merging with weather data.
+start = pd.Timestamp(datetime.now(), tz="Europe/Berlin")
+end = start + pd.Timedelta(hours=22)
+
+zone= "DE_LU"
+
+
+installed_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
 
 # initialize instance Gaz
 
 gaz = Gas(
     name="CCGT_gaz", 
-    capacity_mw=13000, 
+    capacity_mw=installed_capacity_DE_LU["Fossil Gas"].iloc[0], 
     country="Germany",
     fuel_price=30, 
     efficiency=0.5, 
@@ -31,17 +43,17 @@ nuclear = Nuclear(
 
 # initialize instance Wind
 
-wind = Wind(name = 'Wind_farm_1', capacity_mw=22000, country="Germany")
+wind_on_shore = Wind(name = 'Wind_farm_1', capacity_mw=installed_capacity_DE_LU["Wind Onshore"].iloc[0], country="Germany")
 
 # initialize instance Solar
 
-solar = Solar(name='Park_1',capacity_mw=20000, country="Germany")
+solar = Solar(name='Park_1',capacity_mw=installed_capacity_DE_LU["Solar"].iloc[0], country="Germany")
 
 
 
 # initialize instance Wind
 
-list_plants = [gaz, nuclear, solar, wind]
+list_plants = [gaz, nuclear, solar, wind_on_shore]
 market = Market(list_plants)
 
 
@@ -64,14 +76,6 @@ def build_forecast_dataset(start_time_forecasting, end_time_forecasting, zone_fo
     return combined_df
 
 
-# Convert current time into a pandas Timestamp with timezone, required by fetch_load_forecast().
-# Window is 22h (not 24h): ENTSO-E's day-ahead load forecast has a limited horizon and doesn't
-# always cover a full 24h from now — using 22h keeps us safely within the available data range,
-# avoiding gaps that would otherwise need to be handled after merging with weather data.
-start = pd.Timestamp(datetime.now(), tz="Europe/Berlin")
-end = start + pd.Timedelta(hours=22)
-
-zone= "DE_LU"
 
 forecasted_situation = build_forecast_dataset(start,end,zone,52.52, 13.41)
 
@@ -81,3 +85,16 @@ for i, row in forecasted_situation.iterrows():
     price = market.clear(demand_capacity=row['demand'], c02_price=80, wind_speed=row["wind_speed_100m"], temperature=row['temperature'], irradiance=row['irradiance'])
     print(f"{row['time']}: Price={price}")
 
+print('ciao')
+
+#ciao = fetch_installed_capacity_zone(zone,start,end)
+#print(ciao)
+#print(ciao["Biomass"])
+#print(ciao.columns.tolist())
+
+print(installed_capacity_DE_LU[[
+    "Fossil Gas",
+    "Wind Onshore",
+    "Wind Offshore",
+    "Solar"
+]])
