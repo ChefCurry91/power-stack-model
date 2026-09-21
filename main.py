@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from weather import fetch_weather
 from entsoe_data import fetch_load_forecast, fetch_installed_capacity_zone
-from fuel_prices import fetch_gas_price
+from fuel_prices import fetch_gas_price, fetch_c02_price
 
 
 # Convert current time into a pandas Timestamp with timezone, required by fetch_load_forecast().
@@ -21,6 +21,9 @@ installed_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
 
 latest_gas_price = fetch_gas_price()
 
+latest_c02_price = fetch_c02_price()
+
+
 
 # initialize instance Gaz
 
@@ -33,16 +36,6 @@ gaz = Gas(
     emission_factor=0.2,
     )
 
-# initialize instance Nuclear
-
-nuclear = Nuclear(
-        name="Benznau_nuclear",
-        capacity_mw = 30000,
-        country="Switzerland",
-        fuel_price = 20,
-        efficiency = 1,
-        emission_factor = 0
-    )
 
 
 # initialize instance Wind
@@ -85,20 +78,7 @@ forecasted_situation = build_forecast_dataset(start,end,zone,52.52, 13.41)
 
 
 for i, row in forecasted_situation.iterrows():
-    price = market.clear(demand_capacity=row['demand'], c02_price=80, wind_speed=row["wind_speed_100m"], temperature=row['temperature'], irradiance=row['irradiance'])
+    price = market.clear(demand_capacity=row['demand'], c02_price=latest_c02_price, wind_speed=row["wind_speed_100m"], temperature=row['temperature'], irradiance=row['irradiance'])
     print(f"{row['time']}: Price={price}")
 
 
-
-print(installed_capacity_DE_LU[[
-    "Fossil Gas",
-    "Wind Onshore",
-    "Wind Offshore",
-    "Solar"
-]])
-
-
-
-
-
-print(type(latest_gas_price))
