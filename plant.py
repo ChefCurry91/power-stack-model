@@ -23,12 +23,8 @@ class Plant():
         else:
             return False
 
-    def available_capacity_mw(self, **kwargs):
 
-        # **kwargs accepts any named argument without crashing (e.g., wind_speed=30, irradiance=500)
-        # This is useful because Market will call this method the same way for all power plants,
-        # even though Gas doesn't need any of these weather arguments
-
+    def available_capacity_mw(self):
         if self.is_available():
             return self.capacity_mw
         else:
@@ -87,20 +83,32 @@ class Nuclear(Plant):
 
 
 
-### Class Solar
+### Class Wind
 
 
 class Wind(Plant):
-    def __init__(self, name, capacity_mw, country, availability = 0.99, cut_in=12, rated=55, cut_out=90):
+    def __init__(self, name, capacity_mw, country, availability = 0.99, cut_in=12, rated=55, cut_out=90, wind_speed=0,temperature =0):
         super().__init__(name,capacity_mw, country, availability)
         self.cut_in = cut_in
         self.rated = rated
         self.cut_out = cut_out
+        self.wind_speed = wind_speed
+        self.temperature = temperature
+
+    def set_weather(self, wind_speed, temperature):
+
+        # Meant to be called once per cluster per hour, right before actual_capacity_mw(), so this instance always
+        # reflects the current time/cluster's weather condition.
+
+        self.wind_speed = wind_speed
+        self.temperature = temperature
+
+
 
 
     # provide how much capacity is currently produced
 
-    def actual_capacity_mw(self, wind_speed, temperature):
+    def actual_capacity_mw(self):
 
         # Check if wind farm is available to be run
         current_availability = self.is_available() 
@@ -113,7 +121,7 @@ class Wind(Plant):
         #   T  = temperature in Kelvin (must convert from Celsius: + 273.15)
 
 
-        current_density = 101325 / (287.05 * (temperature + 273.15))
+        current_density = 101325 / (287.05 * (self.temperature + 273.15))
 
         # ratio_density: how today's actual air density compares to the standard
         # reference density (1.225 kg/m^3). Below 1.0 on a hot day (less dense air, less power), 
@@ -138,47 +146,27 @@ class Wind(Plant):
             return 0
 
         else:
-            if wind_speed < self.cut_in:
+            if self.wind_speed < self.cut_in:
                 return 0
                 # formule cubique, qui donne une valeur progressive — proche de 0 juste après cut_in, 
                 # et qui monte jusqu'à approcher capacity_mw quand wind_speed s'approche de rated. 
                 # Ce n'est pas le maximum constant, c'est une valeur qui change selon wind_speed, 
                 # dans cette plage précise.
-            elif self.cut_in < wind_speed < self.rated:
-                current_capacity_mw = (self.capacity_mw * (wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)) * ratio_density
+            elif self.cut_in < self.wind_speed < self.rated:
+                current_capacity_mw = (self.capacity_mw * (self.wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)) * ratio_density
                 return current_capacity_mw 
         
-            elif self.rated < wind_speed < self.cut_out:
+            elif self.rated < self.wind_speed < self.cut_out:
                     return self.capacity_mw * ratio_density
             
-            elif wind_speed > self.cut_out:
+            elif self.wind_speed > self.cut_out:
                     return 0
 
 
+    def available_capacity_mw(self): 
+        return self.actual_capacity_mw() 
+
     
-    def available_capacity_mw(self, **kwargs):
-
-
-        # 1)  **“kwargs” in a function signature means “accepts any number of named arguments, 
-        # no matter which ones; I'll collect them all in a dictionary called ‘kwargs’.”**
-
-        
-        # 2) To the right of the =: kwargs[“wind_speed”] — this means “look up, in the kwargs dictionary, 
-        # the value associated with the key (the text) ‘wind_speed’”.
-
-        # 2) To the left of the =: wind_speed (without quotes) — this is the name of a new local variable 
-        # you're creating, in which you store the value on the right.
-        # wind_speed = kwargs["wind_speed"]
-
-        wind_speed = kwargs["wind_speed"]
-        temperature = kwargs["temperature"]
-
-        # We use actual_capacity_mw() here instead of capacity_mw (the fixed installed capacity),
-        # because a wind farm can't reliably produce its full nameplate capacity on demand like
-        # Gas/Nuclear can — output depends on real-time wind, so Market needs the actual
-        # weather-limited value to compute a realistic clearing price.
-        
-        return self.actual_capacity_mw(wind_speed,temperature)
         
 
 
@@ -191,40 +179,53 @@ class Wind(Plant):
 
 
 class Solar(Plant):
-    def __init__(self,name, capacity_mw, country, availability = 0.99):
+    def __init__(self,name, capacity_mw, country, availability = 0.99, irradiance=0):
         super().__init__(name, capacity_mw, country, availability)
+        self.irradiance = irradiance
 
 
 
 
-    def actual_capacity_mw(self, irradiance, irradiance_max=1000):
+
+    def set_weather(self, irradiance):
+
+        # Meant to be called once per cluster per hour, right before actual_capacity_mw(), so this instance always
+        # reflects the current time/cluster's weather condition.
+
+        self.irradiance = irradiance
+
+
+    def actual_capacity_mw(self, irradiance_max=1000):
 
         # Check if solar park is available to be "run"
-        current_availability = self.is_available() 
-
-        # initialize current MWH capacity
+        current_availability = self.is_available()
 
 
         if not current_availability:
             return 0
 
+
         else:
 
+            # irradiance: amount of sunlight energy hitting a surface, expressed as a rate (per second)
+            # -> that rate is what we call power, measured in W/m^2 (0 at night, up to ~1000 in full sun)
+            # capacity_factor: fraction (0 to 1) of installed capacity actually usable right now
+  
+            capacity_factor = min(self.irradiance / irradiance_max, 1)
 
-        # irradiance: amount of sunlight energy hitting a surface, expressed as a rate (per second)
-        # -> that rate is what we call power, measured in W/m^2 (0 at night, up to ~1000 in full sun)
-        # capacity_factor: fraction (0 to 1) of installed capacity actually usable right now
-        
-            capacity_factor = min(irradiance / irradiance_max, 1)
+            # self.capacity_mw is fixed (this cluster's installed capacity, doesn't change over time).
+            # capacity_factor varies with weather. The result below is what actually changes per hour:
+            # this cluster's real production at the current time, given its currently stored irradiance.
+
             return self.capacity_mw * capacity_factor
 
-    def available_capacity_mw(self, **kwargs):
 
-        irradiance = kwargs["irradiance"]
+    def available_capacity_mw(self): 
+        return self.actual_capacity_mw()
 
-        return self.actual_capacity_mw(irradiance, irradiance_max=1000)
+
 
     def marginal_cost(self, c02_price):
         return 0
 
-
+#https://www.pv-tech.org/germany-passes-100gw-of-installed-solar-pv/?utm_source=chatgpt.com
