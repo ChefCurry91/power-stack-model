@@ -1,3 +1,6 @@
-Wind generation: Wind generation still uses a single weather point as a proxy for Germany, while installed wind capacity is geographically distributed. A more accurate implementation would use multiple regional weather points and account for the geographical distribution of wind capacity.
-Solar generation: Solar generation is now represented using geographically clustered installations and regional weather forecasts. However, the underlying installation dataset mainly covers ground-mounted solar and is scaled to match the national ENTSO-E installed capacity. A more detailed representation of the German solar fleet, including rooftop PV, would improve the model.
-Generation availability: Plant availability is currently modelled using simplified stochastic availability assumptions. The implementation could be improved
+#Wind generation: 
+Wind generation still uses a single weather point as a proxy for Germany, while installed wind capacity is geographically distributed. A more accurate implementation would use multiple regional weather points and account for the geographical distribution of wind capacity.
+#Solar generation: 
+Solar generation is now represented using geographically clustered installations and regional weather forecasts. However, the underlying installation dataset mainly covers ground-mounted solar and is scaled to match the national ENTSO-E installed capacity. A more detailed representation of the German solar fleet, including rooftop PV, would improve the model.
+#Generation availability: 
+Plant availability is currently modelled using simplified stochastic availability assumptions. The implementation could be improved
