@@ -4,3 +4,4 @@ __pycache__/
 .cache.sqlite
 .env
 data/*.csv
+data/
