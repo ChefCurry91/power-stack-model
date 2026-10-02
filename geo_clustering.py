@@ -25,14 +25,20 @@ def cluster_installations(df, n_clusters):
 # weather data (irradiance, wind speed, temperature) and
 # estimate available renewable generation.
 
-def aggregate_clusters(df):
-    clusters = df.groupby("cluster").agg(
-        latitude=("y_coordinates", "mean"),
-        longitude=("x_coordinates", "mean"),
-        installed_capacity=("installed_capacity", "sum"),
-        n_installations=("cluster", "size")
-    ).reset_index()
 
+
+def aggregate_clusters(df):
+    agg_dict = {
+        "latitude": ("y_coordinates", "mean"),
+        "longitude": ("x_coordinates", "mean"),
+        "installed_capacity": ("installed_capacity", "sum"),
+        "n_installations": ("cluster", "size")
+    }
+    
+    if "hub_height" in df.columns:
+        agg_dict["hub_height"] = ("hub_height", "mean")
+    
+    clusters = df.groupby("cluster").agg(**agg_dict).reset_index()
     return clusters
 
 

@@ -87,13 +87,14 @@ class Nuclear(Plant):
 
 
 class Wind(Plant):
-    def __init__(self, name, capacity_mw, country, availability = 0.99, cut_in=12, rated=55, cut_out=90, wind_speed=0,temperature =0):
+    def __init__(self, name, capacity_mw, country, availability = 0.99, cut_in=12, rated=55, cut_out=90, wind_speed=0,temperature =0, hub_height=100):
         super().__init__(name,capacity_mw, country, availability)
         self.cut_in = cut_in
         self.rated = rated
         self.cut_out = cut_out
         self.wind_speed = wind_speed
         self.temperature = temperature
+        self.hub_height = hub_height
 
     def set_weather(self, wind_speed, temperature):
 
@@ -137,37 +138,36 @@ class Wind(Plant):
         # slightly more output.
 
 
+        corrected_wind_speed = self.wind_speed * (self.hub_height / 100) ** 0.143
+
+        # Hellmann power law: wind_speed is measured at 100m, but each turbine sits at its own
+        # hub_height. v_hub = v_100m * (hub_height / 100)^alpha, alpha = 0.143 for onshore.
+        # Stored as a local variable — never overwrites self.wind_speed (the raw measured value),
+        # so repeated calls to actual_capacity_mw() without a new set_weather() stay correct.
+        corrected_wind_speed = self.wind_speed * (self.hub_height / 100) ** 0.143
+
+
 
         # initialize current MWH capacity
 
-        current_capacity_mw =  0
 
         if not current_availability:
             return 0
 
-        else:
-            if self.wind_speed < self.cut_in:
-                return 0
-                # formule cubique, qui donne une valeur progressive — proche de 0 juste après cut_in, 
-                # et qui monte jusqu'à approcher capacity_mw quand wind_speed s'approche de rated. 
-                # Ce n'est pas le maximum constant, c'est une valeur qui change selon wind_speed, 
-                # dans cette plage précise.
-            elif self.cut_in < self.wind_speed < self.rated:
-                current_capacity_mw = (self.capacity_mw * (self.wind_speed**3 - self.cut_in**3) / (self.rated**3 - self.cut_in**3)) * ratio_density
-                return current_capacity_mw 
-        
-            elif self.rated < self.wind_speed < self.cut_out:
-                    return self.capacity_mw * ratio_density
-            
-            elif self.wind_speed > self.cut_out:
-                    return 0
+        if corrected_wind_speed < self.cut_in:
+            return 0
+        elif self.cut_in < corrected_wind_speed < self.rated:
+            current_capacity_mw = (self.capacity_mw * (corrected_wind_speed**3 - self.cut_in**3)
+                                    / (self.rated**3 - self.cut_in**3)) * ratio_density
+            return current_capacity_mw
+        elif self.rated < corrected_wind_speed < self.cut_out:
+            return self.capacity_mw * ratio_density
+        elif corrected_wind_speed > self.cut_out:
+            return 0
 
 
     def available_capacity_mw(self): 
         return self.actual_capacity_mw() 
-
-    
-        
 
 
     def marginal_cost(self, c02_price):
