@@ -1,6 +1,6 @@
 from entsoe_data import fetch_installed_capacity_zone 
 from geo_clustering import cluster_installations, aggregate_clusters
-from new_weather import fetch_weather_batch
+from new_weather import fetch_weather_batch, fetch_weather_batch_historical, coordinates_to_strings
 
 import pandas as pd
 from datetime import datetime
@@ -30,23 +30,36 @@ def prepare_solar_clusters(coordinates_df, n_clusters):
     # Scale up to match real national total (see README: known limitation on ground-mounted vs rooftop mix)
     clusters["installed_capacity"] *= target_total_capacity / clusters["installed_capacity"].sum()
 
-
-    lat_list = clusters["latitude"].tolist()
-    lon_list = clusters["longitude"].tolist()
-
-    
-    # create string and separate by comma
-    lat_string = ",".join(str(x) for x in lat_list)
-    lon_string = ",".join(str(x) for x in lon_list)
-
-    if len(lat_string) > 2000 or len(lon_string) > 2000:
-        lat_string = ",".join(f"{x:.3f}" for x in lat_list)
-        lon_string = ",".join(f"{x:.3f}" for x in lon_list)
+    lat_string, lon_string = coordinates_to_strings(clusters)
 
 
     weather_list = fetch_weather_batch(lat_string, lon_string)
 
     return clusters, weather_list
+
+
+def prepare_solar_clusters_historical(coordinates_df, n_clusters, start_date, end_date):
+    
+    
+    # Fetch total solar capacity DE-LU
+    solar_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
+    # Extract value 
+    target_total_capacity = solar_capacity_DE_LU["Solar"].iloc[0]
+
+    # Defines number of clusters
+    df_number_clusters, kmean_number_clusters = cluster_installations(coordinates_df.copy(), n_clusters)
+
+    # aggregate_clusters() calculate latitude,longitude,installed capacity and n_installation according to number of clusters
+    clusters = aggregate_clusters(df_number_clusters)
+
+    # Scale up to match real national total (see README: known limitation on ground-mounted vs rooftop mix)
+    clusters["installed_capacity"] *= target_total_capacity / clusters["installed_capacity"].sum()
+
+    lat_string, lon_string = coordinates_to_strings(clusters)
+    weather_list = fetch_weather_batch_historical(lat_string, lon_string, start_date, end_date)
+
+    return clusters, weather_list
+
 
 
 
@@ -68,3 +81,6 @@ def compute_solar_production_series(clusters_df, weather_list, solar_instances, 
         results.append({"time": current_time, "solar_production": total_production_this_hour})
 
     return pd.DataFrame(results)
+
+
+

@@ -1,6 +1,7 @@
 from entsoe_data import fetch_installed_capacity_zone 
 from geo_clustering import cluster_installations, aggregate_clusters
-from new_weather import fetch_weather_batch
+from new_weather import fetch_weather_batch, fetch_weather_batch_historical, coordinates_to_strings
+
 
 import pandas as pd
 from datetime import datetime
@@ -19,36 +20,35 @@ installed_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
 
 def prepare_wind_on_shore_clusters(coordinates_df, n_clusters):
 
-    # Fetch total Wind Onshore capacity DE-LU
-    wind_on_shore_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
-    # Extract value 
+    wind_on_shore_capacity_DE_LU = fetch_installed_capacity_zone(zone, start, end)
     target_total_capacity_wind_on_shore = wind_on_shore_capacity_DE_LU["Wind Onshore"].iloc[0]
 
-
-    # Defines number of clusters # Wind Onshore
     df_number_clusters, kmean_number_clusters = cluster_installations(coordinates_df.copy(), n_clusters)
-
-    # aggregate_clusters() calculate latitude,longitude,installed capacity and n_installation according to number of clusters
     clusters = aggregate_clusters(df_number_clusters)
 
-    # Scale up to match real national total (see README: known limitation on ground-mounted vs rooftop mix)
+    # Scale to the ENTSO-E national total (Zenodo already covers ~92% of onshore, so the factor is close to 1)
     clusters["installed_capacity"] *= target_total_capacity_wind_on_shore / clusters["installed_capacity"].sum()
 
-
-    lat_list = clusters["latitude"].tolist()
-    lon_list = clusters["longitude"].tolist()
-
-    
-    # create string and separate by comma
-    lat_string = ",".join(str(x) for x in lat_list)
-    lon_string = ",".join(str(x) for x in lon_list)
-
-    if len(lat_string) > 2000 or len(lon_string) > 2000:
-        lat_string = ",".join(f"{x:.3f}" for x in lat_list)
-        lon_string = ",".join(f"{x:.3f}" for x in lon_list)
-
-
+    lat_string, lon_string = coordinates_to_strings(clusters)
     weather_list = fetch_weather_batch(lat_string, lon_string)
+
+    return clusters, weather_list
+
+
+# Wind Onshore
+
+def prepare_wind_on_shore_clusters_historical(coordinates_df, n_clusters, start_date, end_date):
+
+    wind_on_shore_capacity_DE_LU = fetch_installed_capacity_zone(zone, start, end)
+    target_total_capacity_wind_on_shore = wind_on_shore_capacity_DE_LU["Wind Onshore"].iloc[0]
+
+    df_number_clusters, kmean_number_clusters = cluster_installations(coordinates_df.copy(), n_clusters)
+    clusters = aggregate_clusters(df_number_clusters)
+
+    clusters["installed_capacity"] *= target_total_capacity_wind_on_shore / clusters["installed_capacity"].sum()
+
+    lat_string, lon_string = coordinates_to_strings(clusters)
+    weather_list = fetch_weather_batch_historical(lat_string, lon_string, start_date, end_date)
 
     return clusters, weather_list
 
@@ -96,23 +96,30 @@ def prepare_wind_off_shore_clusters(coordinates_df, n_clusters):
     # Scale up to match real national total (see README: known limitation on ground-mounted vs rooftop mix)
     clusters["installed_capacity"] *= target_total_capacity_wind_off_shore / clusters["installed_capacity"].sum()
 
-
-    lat_list = clusters["latitude"].tolist()
-    lon_list = clusters["longitude"].tolist()
-
-    
-    # create string and separate by comma
-    lat_string = ",".join(str(x) for x in lat_list)
-    lon_string = ",".join(str(x) for x in lon_list)
-
-    if len(lat_string) > 2000 or len(lon_string) > 2000:
-        lat_string = ",".join(f"{x:.3f}" for x in lat_list)
-        lon_string = ",".join(f"{x:.3f}" for x in lon_list)
-
-
+    lat_string, lon_string = coordinates_to_strings(clusters)
     weather_list = fetch_weather_batch(lat_string, lon_string)
 
     return clusters, weather_list
+
+
+
+# Wind Offshore  
+
+def prepare_wind_off_shore_clusters_historical(coordinates_df, n_clusters, start_date, end_date):
+
+    wind_off_shore_capacity_DE_LU = fetch_installed_capacity_zone(zone, start, end)
+    target_total_capacity_wind_off_shore = wind_off_shore_capacity_DE_LU["Wind Offshore"].iloc[0]
+
+    df_number_clusters, kmean_number_clusters = cluster_installations(coordinates_df.copy(), n_clusters)
+    clusters = aggregate_clusters(df_number_clusters)
+
+    clusters["installed_capacity"] *= target_total_capacity_wind_off_shore / clusters["installed_capacity"].sum()
+
+    lat_string, lon_string = coordinates_to_strings(clusters)
+    weather_list = fetch_weather_batch_historical(lat_string, lon_string, start_date, end_date)
+
+    return clusters, weather_list
+
 
 
 # Wind Offshore  

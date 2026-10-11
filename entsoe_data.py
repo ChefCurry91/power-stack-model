@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import os
 from entsoe import EntsoePandasClient
-import pandas as pd
+
 
 # Loads variables from the .env file
 load_dotenv()  #
@@ -33,4 +33,29 @@ def fetch_installed_capacity_zone(zone,start,end):
 
 #   returns (fixed, a single “snapshot,” no hourly changes)—this is what should provide 
 #   with the total national capacity, which you then distribute among your 25 clusters (proportionally),
+
+
+
+
+def fetch_day_ahead_prices (zone, start, end):
+    load_historic_data = client.query_day_ahead_prices(zone, start=start, end=end)
+    load_historic_data_hourly = load_historic_data[load_historic_data.index.minute == 0]
+
+    load_historic_price_hourly = load_historic_data_hourly.reset_index()
+    load_historic_price_hourly.columns = ["time", "price"]
+    
+
+    return load_historic_price_hourly
+
+def fetch_day_ahead_demand(zone,start,end):
+    load_historic_data = client.query_load(zone, start=start, end=end)
+    load_historic_data_hourly = load_historic_data[load_historic_data.index.minute == 0]
+
+    load_historic_demand_hourly = load_historic_data_hourly.reset_index()
+    load_historic_demand_hourly.columns = ["time", "demand"]
+
+    return load_historic_demand_hourly
+
+
+
 

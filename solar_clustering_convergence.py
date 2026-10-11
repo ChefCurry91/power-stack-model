@@ -1,10 +1,8 @@
 from renewable_locations import load_installations
 from solar_pipeline import prepare_solar_clusters, compute_solar_production_series
 
-
 from entsoe_data import fetch_load_forecast 
 from plant import Solar
-
 
 import pandas as pd
 from datetime import datetime

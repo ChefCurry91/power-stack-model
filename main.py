@@ -1,6 +1,6 @@
 from plant import Gas, Wind, Solar
-from solar_pipeline import prepare_solar_clusters, compute_solar_production_series
-from wind_pipeline import prepare_wind_on_shore_clusters, prepare_wind_off_shore_clusters, compute_wind_on_shore_production_series, compute_wind_off_shore_production_series
+from solar_pipeline import prepare_solar_clusters
+from wind_pipeline import prepare_wind_on_shore_clusters, prepare_wind_off_shore_clusters
 from market import Market
 import pandas as pd
 from datetime import datetime
@@ -21,6 +21,13 @@ zone= "DE_LU"
 
 
 installed_capacity_DE_LU = fetch_installed_capacity_zone(zone,start,end)
+
+for column_name in installed_capacity_DE_LU.columns:
+    value = installed_capacity_DE_LU[column_name].iloc[0]
+    print(column_name, value)
+
+
+# Energy storage 14025.81
 
 latest_gas_price = fetch_gas_price()
 latest_c02_price = fetch_c02_price()

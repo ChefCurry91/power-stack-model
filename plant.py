@@ -50,6 +50,11 @@ class Gas(Plant):
         self.emission_factor = emission_factor
 
 
+    def set_fuel_price(self, fuel_price):
+
+        self.fuel_price = fuel_price
+
+
     def marginal_cost(self, c02_price):
 
         # diviser le prix (EUR/MWh thermique) par le rendement donne le coût en EUR/MWh électrique
@@ -61,6 +66,7 @@ class Gas(Plant):
         # emission_factor * c02_price = (tonnes/MWh) × (EUR/tonne) = EUR par MWh thermique — c'est le coût du CO2 pour chaque MWh thermique brûlé.
 
         return marginal_cost 
+
 
 
 ### Class Nuclear

@@ -1,9 +1,3 @@
-from plant import Plant
-from weather import fetch_weather
-
-
-
-
 class Market():
 
     def __init__(self, plants):

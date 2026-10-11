@@ -4,6 +4,21 @@ import requests_cache
 from retry_requests import retry
 
 
+def coordinates_to_strings(clusters):
+    lat_list = clusters["latitude"].tolist()
+    lon_list = clusters["longitude"].tolist()
+
+    lat_string = ",".join(str(x) for x in lat_list)
+    lon_string = ",".join(str(x) for x in lon_list)
+
+    if len(lat_string) > 2000 or len(lon_string) > 2000:
+        lat_string = ",".join(f"{x:.3f}" for x in lat_list)
+        lon_string = ",".join(f"{x:.3f}" for x in lon_list)
+
+    return lat_string, lon_string
+
+
+
 
 
 def _build_weather_df(response):
@@ -25,10 +40,6 @@ def _build_weather_df(response):
     return weather_df
 
 
-
-
-
-
 # Function fetch_weather_batch(), only accepts two coordinate strings,  built from geo_clustering.py's
 # output: cluster_installations() + aggregate_clusters() produce a DataFrame 
 # with one row per cluster (mean latitude, mean longitude, total capacity)
@@ -45,8 +56,6 @@ def fetch_weather_batch(latitudes, longitudes):
     # 3 distinct points, not one strange value. It treats each (latitude, longitude) pair at
     # the same position as one separate location, and returns one response object per point,
     # in the same order — hence responses[0], responses[1], responses[2].
-
-
 
 
     cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
@@ -68,4 +77,23 @@ def fetch_weather_batch(latitudes, longitudes):
 #  it returns a LIST of DataFrames — the lenght of the list depends on number of cluster. 
 #  each index represents a cluster with 168 rows an (one per hour) 
 #  and contains those columns: time, wind_speed_100m, irradiance, temperature.
+
+
+def fetch_weather_batch_historical(latitudes, longitudes, start_date, end_date):
+    cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
+    retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
+    openmeteo = openmeteo_requests.Client(session=retry_session)
+
+    url = "https://archive-api.open-meteo.com/v1/archive"
+    params = {
+        "latitude": latitudes,
+        "longitude": longitudes,
+        "hourly": "wind_speed_100m,shortwave_radiation,temperature_2m",
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    responses = openmeteo.weather_api(url, params=params)
+    return [_build_weather_df(response) for response in responses]
+
+
 
