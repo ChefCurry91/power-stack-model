@@ -1,8 +1,8 @@
-from renewable_locations import load_installations
-from wind_pipeline import prepare_wind_on_shore_clusters, prepare_wind_off_shore_clusters, compute_wind_on_shore_production_series, compute_wind_off_shore_production_series
+from power_stack.sources.renewable_locations import load_installations
+from power_stack.pipelines.wind_pipeline import prepare_wind_on_shore_clusters, prepare_wind_off_shore_clusters, compute_wind_on_shore_production_series, compute_wind_off_shore_production_series
 
-from entsoe_data import fetch_load_forecast 
-from plant import Wind
+from power_stack.sources.entsoe_data import fetch_load_forecast 
+from power_stack.plant import Wind
 
 
 import pandas as pd

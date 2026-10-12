@@ -1,6 +1,6 @@
-from entsoe_data import fetch_installed_capacity_zone 
-from geo_clustering import cluster_installations, aggregate_clusters
-from new_weather import fetch_weather_batch, fetch_weather_batch_historical, coordinates_to_strings
+from power_stack.sources.entsoe_data import fetch_installed_capacity_zone 
+from power_stack.pipelines.geo_clustering  import cluster_installations, aggregate_clusters
+from power_stack.sources.new_weather import fetch_weather_batch, fetch_weather_batch_historical, coordinates_to_strings
 
 import pandas as pd
 from datetime import datetime

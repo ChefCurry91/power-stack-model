@@ -1,8 +1,8 @@
 import pandas as pd
 from datetime import datetime
 
-from renewable_locations import load_installations
-from wind_pipeline import prepare_wind_on_shore_clusters_historical, prepare_wind_off_shore_clusters_historical
+from power_stack.sources.renewable_locations import load_installations
+from power_stack.pipelines.wind_pipeline import prepare_wind_on_shore_clusters_historical, prepare_wind_off_shore_clusters_historical
 
 end = pd.Timestamp(datetime.now(), tz="Europe/Berlin") - pd.Timedelta(days=1)
 start = end - pd.Timedelta(days=58)
