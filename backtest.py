@@ -4,7 +4,7 @@ from power_stack.pipelines.wind_pipeline import prepare_wind_on_shore_clusters_h
 
 from power_stack.sources.entsoe_data import fetch_installed_capacity_zone, fetch_day_ahead_prices, fetch_day_ahead_demand
 from power_stack.sources.renewable_locations import load_installations
-from power_stack.sources.fuel_prices import load_gas_price_history, load_co2_price_history
+#from power_stack.sources.fuel_prices import load_co2_price_history load_gas_price_history, 
 import pandas as pd
 from datetime import datetime
 import random
@@ -19,8 +19,25 @@ random.seed(42)
 # it repeats itself identically with every launch.
 
 
-end = pd.Timestamp(datetime.now(), tz="Europe/Berlin") - pd.Timedelta(days=1)
-start = end - pd.Timedelta(days=58)
+
+
+# --- Backtest window ---------------------------------------------------------
+# Rolling window: the last 59 days, which shifts at new day.
+# Useful to test on recent data, but results are not comparable between runs from different days.
+end_rolling = pd.Timestamp(datetime.now(), tz="Europe/Berlin") - pd.Timedelta(days=1)
+start_rolling = end_rolling - pd.Timedelta(days=58)
+
+# Fixed window: the same period at every run, so that the only thing that changes
+# between two runs is the model (e.g. before/after adding coal).
+# It must stay within the EEX gas price history (60 rolling days), see the gas snapshot.
+start_fixed = pd.Timestamp("2026-08-27", tz="Europe/Berlin")
+end_fixed = pd.Timestamp("2026-10-22", tz="Europe/Berlin")
+
+USE_FIXED_WINDOW = True   # True = comparable baseline, False = rolling window
+
+start, end = (start_fixed, end_fixed) if USE_FIXED_WINDOW else (start_rolling, end_rolling)
+
+
 
 zone= "DE_LU"
 
@@ -33,10 +50,19 @@ prices = fetch_day_ahead_prices(zone, start, end) # columns : time, prices
 hourly = pd.merge(prices, demand, on="time", how="inner")
 
 hourly["date"] = hourly["time"].dt.tz_localize(None).dt.normalize()
-hourly = hourly.merge(load_gas_price_history(), on="date", how="left")
-hourly = hourly.merge(load_co2_price_history(), on="date", how="left")
 
-# returns 1390 rows with following columns:
+#hourly = hourly.merge(load_gas_price_history(), on="date", how="left")
+
+gas = pd.read_csv("data/gas_snapshot_2026-10-25.csv", parse_dates=["date"])
+hourly = hourly.merge(gas, on="date", how="left")
+
+#hourly = hourly.merge(load_co2_price_history(), on="date", how="left")
+co2 = pd.read_csv("data/co2_snapshot_2026-10-25.csv", parse_dates=["date"])
+hourly = hourly.merge(co2, on="date", how="left")
+assert hourly[["gas_price", "co2_price"]].notna().all().all(), "NaN in gas/CO2 prices"
+
+
+# returns rows with following columns:
 # time: 2026-08-07 18:00:00+02:00  price, demand, only date, gas_price c02_price
 #       2026-08-07 19:00:00+02:00
 

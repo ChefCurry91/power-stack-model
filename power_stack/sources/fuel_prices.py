@@ -89,7 +89,7 @@ def fetch_gas_price():
 
 # return most recent gas price
 
-
+print(load_gas_price_history()["date"].min(), load_gas_price_history()["date"].max())
 
 
 
@@ -131,15 +131,7 @@ def load_co2_price_history():
     return df
 # return DF with columns date and price
 
-gas = load_gas_price_history()
-co2 = load_co2_price_history()
 
-overlap = gas.merge(co2, on="date", how="inner")
-print(len(overlap), overlap["date"].min(), overlap["date"].max())
-
-#co2 = load_co2_excel()
-#print(co2["Status"].unique())
-#print(co2["Date"].duplicated().sum())
 
 
 
@@ -177,4 +169,3 @@ def fetch_c02_price():
     co2_price = co2_price_df.iloc[0]["Auction Price €/tCO2"]
 
     return co2_price
-
