@@ -201,8 +201,40 @@ results = pd.DataFrame(model_prices)
 results["model_price"] = pd.to_numeric(results["model_price"], errors="coerce")
 results = results.merge(hourly[["time", "price"]], on="time")
 
+
+SHOW_CAP_ANALYSIS = False   # True = print the SHORTAGE diagnostic and the CAP sensitivity
+
+if SHOW_CAP_ANALYSIS:
+    # --- Diagnostic: what does the real market pay when the model is in SHORTAGE? ---
+    # Used once to choose CAP. Informative only, CAP is NOT recomputed from it at each run.
+    shortage_real = results.loc[results["model_price"].isna(), "price"]
+    print("Real price during SHORTAGE hours: mean", round(shortage_real.mean()),
+          "| median", round(shortage_real.median()),
+          "| q90", round(shortage_real.quantile(0.90)))
+
+    # --- Sensitivity: does the choice of CAP change the conclusion? ---
+    for cap in (200, 250, 300, 400):
+        err_cap = results["model_price"].fillna(cap) - results["price"]
+        print(cap, "MAE:", round(err_cap.abs().mean(), 1),
+              "RMSE:", round((err_cap ** 2).mean() ** 0.5, 1))
+
+# --- Baseline metrics on ALL hours ---
+CAP = 250  # €/MWh assigned to SHORTAGE hours (real price in SHORTAGE: median 200, q90 264)
+
+# Error per hour: model price (or CAP when in SHORTAGE) minus real ENTSO-E price
+err = results["model_price"].fillna(CAP) - results["price"]
+
+print("Bias (mean error, all hours):", round(err.mean(), 1))
+# MAE: mean of the absolute errors -> "on average, I am off by X €/MWh"
+print("MAE:", round(err.abs().mean(), 1))
+# RMSE: square the errors, average, then square root -> large errors weigh more
+print("RMSE:", round((err ** 2).mean() ** 0.5, 1))
+# Naive reference: always predict the mean price of the period
+print("MAE naive (period mean):", round((results["price"].mean() - results["price"]).abs().mean(), 1))
+
+# --- Non-SHORTAGE hours only (not a global measure of accuracy) ---
 valid = results.dropna(subset=["model_price"])
-print("Heures :", len(results))
-print("SHORTAGE :", round(results["model_price"].isna().mean() * 100), "%")
-print("Corrélation :", valid["model_price"].corr(valid["price"]))
-print("Erreur médiane :", (valid["model_price"] - valid["price"]).median())
+print("Hours:", len(results))
+print("SHORTAGE:", round(results["model_price"].isna().mean() * 100), "%")
+print("Correlation (non-SHORTAGE hours):", valid["model_price"].corr(valid["price"]))
+print("Median error (non-SHORTAGE hours):", (valid["model_price"] - valid["price"]).median())
